@@ -1,0 +1,9 @@
+{
+  "name": "jawed-iqbal",
+  "compatibility_date": "2026-06-01",
+  "assets": { "directory": "." },
+  "routes": [
+    { "pattern": "jawed-iqbal.com", "custom_domain": true },
+    { "pattern": "www.jawed-iqbal.com", "custom_domain": true }
+  ]
+}
