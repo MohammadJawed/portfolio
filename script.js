@@ -70,34 +70,56 @@
   }
 
   /* project cards: tap to open on touch, hover/focus handles the rest */
-  const cards = document.querySelectorAll('.card');
+  const cards = [...document.querySelectorAll('.card')];
   cards.forEach(card => card.addEventListener('click', () => {
-    if (fine) return;
+    if (fine || !card.classList.contains('top')) return;
     const open = !card.classList.contains('open');
     cards.forEach(c => c.classList.remove('open'));
     card.classList.toggle('open', open);
   }));
+  if (still) cards.forEach(c => c.classList.add('top'));
 
-  /* scroll: hero fade + pinned horizontal projects */
+  /* scroll: hero fade + pinned project stack */
   const heroIn = document.querySelector('.hero-in');
   const projects = document.querySelector('.projects');
-  const track = document.querySelector('.track');
+  const last = cards.length - 1;
+  const HOLD = 0.35; // extra scroll, in cards, to rest on the final stack
 
   const sizeProjects = () => {
-    projects.style.height = `${track.scrollWidth - innerWidth + innerHeight}px`;
+    if (still) return;
+    projects.style.height = `${innerHeight * (1 + (last + HOLD) * 0.9)}px`;
+  };
+
+  const stackCards = () => {
+    const vh = innerHeight;
+    const r = projects.getBoundingClientRect();
+    const pos = clamp(-r.top / (projects.offsetHeight - vh)) * (last + HOLD);
+    const small = innerWidth < 640;
+    const gap = small ? 10 : 24;                                 // offset between stacked cards
+    const w = cards[0].firstElementChild.offsetWidth + (small ? 12 : 20); // card + gap in the row
+    const step = w - gap;                                        // how far each card slides to land
+    const shift = clamp(pos / last) * last * step;
+    // the row slides left; each card stops once it reaches its place on the pile
+    const xs = cards.map((_, i) => Math.max(i * gap, i * w - shift));
+    const over = cards.map((_, i) => (i ? clamp((w - (xs[i] - xs[i - 1])) / step) : 0));
+
+    cards.forEach((card, i) => {
+      const depth = over.slice(i + 1).reduce((a, b) => a + b, 0);
+      card.style.transform = `translateX(${xs[i]}px) scale(${Math.max(0.85, 1 - depth * 0.05)})`;
+      card.style.setProperty('--dim', Math.min(0.5, depth * 0.18));
+      // only uncovered cards can open
+      const free = i === last || over[i + 1] < 0.5;
+      card.classList.toggle('top', free);
+      if (!free) card.classList.remove('open');
+    });
   };
 
   const onScroll = () => {
-    const vh = innerHeight;
-    if (!still) {
-      const h = clamp(scrollY / vh);
-      heroIn.style.transform = `scale(${1 - h * 0.12})`;
-      heroIn.style.opacity = 1 - h * 1.2;
-    }
-    const p = projects.getBoundingClientRect();
-    const prog = clamp(-p.top / (projects.offsetHeight - vh));
-    const run = Math.max(0, parseFloat(projects.style.height) - vh);
-    track.style.transform = `translateX(${-prog * run}px)`;
+    if (still) return;
+    const h = clamp(scrollY / innerHeight);
+    heroIn.style.transform = `scale(${1 - h * 0.12})`;
+    heroIn.style.opacity = 1 - h * 1.2;
+    stackCards();
   };
 
   /* custom cursor: grows over text and links, inverting what's beneath */
